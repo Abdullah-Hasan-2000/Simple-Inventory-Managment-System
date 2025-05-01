@@ -1,14 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const brandDropdown = document.getElementById('brandNameDropdown');
-    const sizeDropdown = document.getElementById('sizeDropdown');
-    const quantityInput = document.getElementById('quantityCrates'); // Get quantity input
-    const priceInput = document.getElementById('sellingPricePerCrate'); // Get price input
-    const salesForm = document.getElementById('salesForm');
-    const salesTableBody = document.getElementById('salesTableBody'); // Get table body
+    var brandDropdown = document.getElementById('brandNameDropdown');
+    var sizeDropdown = document.getElementById('sizeDropdown');
+    var quantityInput = document.getElementById('quantityCrates'); // Get quantity input
+    var priceInput = document.getElementById('sellingPricePerCrate'); // Get price input
+    var salesForm = document.getElementById('salesForm');
+    var salesTableBody = document.getElementById('salesTableBody'); // Get table body
 
     // Helper function to add options to a select element
     function addOption(selectElement, text, value) {
-        const option = document.createElement('option');
+        var option = document.createElement('option');
         option.textContent = text;
         option.value = value;
         selectElement.appendChild(option);
@@ -24,100 +24,104 @@ document.addEventListener('DOMContentLoaded', function() {
         selectElement.selectedIndex = 0;
     }
 
-    // Function to fetch brands from Firestore and populate the dropdown
-    async function populateBrands() {
-        try {
-            const snapshot = await db.collection('brands').orderBy('name').get();
-            if (snapshot.empty) {
-                console.log('No brands found in Firestore.');
-                addOption(brandDropdown, 'No brands available', '');
+    // Function to fetch brands from Firestore and populate the dropdown (ES5 Promise)
+    function populateBrands() {
+        db.collection('brands').orderBy('name').get()
+            .then(function(snapshot) {
+                if (snapshot.empty) {
+                    console.log('No brands found in Firestore.');
+                    addOption(brandDropdown, 'No brands available', '');
+                    brandDropdown.disabled = true;
+                    return;
+                }
+                snapshot.forEach(function(doc) {
+                    addOption(brandDropdown, doc.data().name, doc.data().name);
+                });
+            })
+            .catch(function(error) {
+                console.error("Error fetching brands: ", error);
+                addOption(brandDropdown, 'Error loading brands', '');
                 brandDropdown.disabled = true;
-                return;
-            }
-            snapshot.forEach(doc => {
-                addOption(brandDropdown, doc.data().name, doc.data().name);
             });
-        } catch (error) {
-            console.error("Error fetching brands: ", error);
-            addOption(brandDropdown, 'Error loading brands', '');
-            brandDropdown.disabled = true;
-        }
     }
 
-    // Function to fetch available sizes for a selected brand
-    async function populateSizes(selectedBrand) {
+    // Function to fetch available sizes for a selected brand (ES5 Promise)
+    function populateSizes(selectedBrand) {
         clearOptions(sizeDropdown);
         sizeDropdown.disabled = true;
-        sizeDropdown.options[0].textContent = 'Loading sizes...'; // Update placeholder text
+        sizeDropdown.options[0].textContent = 'Loading sizes...';
 
         if (!selectedBrand) {
             sizeDropdown.options[0].textContent = 'Select brand first...';
             return; // Exit if no brand is selected
         }
 
-        try {
-            const snapshot = await db.collection('inventory')
-                                     .where('brandName', '==', selectedBrand)
-                                     .get();
+        db.collection('inventory')
+            .where('brandName', '==', selectedBrand)
+            .get()
+            .then(function(snapshot) {
+                if (snapshot.empty) {
+                    console.log('No inventory found for brand: ' + selectedBrand);
+                    sizeDropdown.options[0].textContent = 'No sizes available';
+                    return;
+                }
 
-            if (snapshot.empty) {
-                console.log(`No inventory found for brand: ${selectedBrand}`);
-                sizeDropdown.options[0].textContent = 'No sizes available';
-                return;
-            }
+                var availableSizes = []; // Use an array instead of Set
+                snapshot.forEach(function(doc) {
+                    var size = doc.data().bottleSize;
+                    if (availableSizes.indexOf(size) === -1) { // Check if size already exists
+                        availableSizes.push(size);
+                    }
+                });
 
-            const availableSizes = new Set(); // Use a Set to store unique sizes
-            snapshot.forEach(doc => {
-                availableSizes.add(doc.data().bottleSize);
+                if (availableSizes.length === 0) {
+                     sizeDropdown.options[0].textContent = 'No sizes available';
+                     return;
+                }
+
+                var sortedSizes = availableSizes.sort();
+
+                sizeDropdown.options[0].textContent = 'Choose...';
+                sortedSizes.forEach(function(size) {
+                    addOption(sizeDropdown, size, size);
+                });
+                sizeDropdown.disabled = false;
+
+            })
+            .catch(function(error) {
+                console.error("Error fetching sizes: ", error);
+                sizeDropdown.options[0].textContent = 'Error loading sizes';
             });
-
-            if (availableSizes.size === 0) {
-                 sizeDropdown.options[0].textContent = 'No sizes available';
-                 return;
-            }
-
-            // Sort sizes (optional, but good for consistency)
-            const sortedSizes = Array.from(availableSizes).sort(); // Basic sort, customize if needed
-
-            sizeDropdown.options[0].textContent = 'Choose...'; // Reset placeholder
-            sortedSizes.forEach(size => {
-                addOption(sizeDropdown, size, size);
-            });
-            sizeDropdown.disabled = false; // Enable the dropdown
-
-        } catch (error) {
-            console.error("Error fetching sizes: ", error);
-            sizeDropdown.options[0].textContent = 'Error loading sizes';
-        }
     }
 
-    // Function to add a sale record to Firestore
-    async function addSaleToFirestore(saleData) {
-        try {
-            const docRef = await db.collection("sales").add(saleData);
-            console.log("Sale recorded with ID: ", docRef.id);
-            return docRef.id; // Return the new document ID
-        } catch (error) {
-            console.error("Error recording sale: ", error);
-            alert("Failed to record sale in database. Please try again.");
-            return null;
-        }
+    // Function to add a sale record to Firestore (ES5 Promise)
+    function addSaleToFirestore(saleData) {
+        return db.collection("sales").add(saleData)
+            .then(function(docRef) {
+                console.log("Sale recorded with ID: ", docRef.id);
+                return docRef.id; // Return the new document ID
+            })
+            .catch(function(error) {
+                console.error("Error recording sale: ", error);
+                alert("Failed to record sale in database. Please try again.");
+                return null;
+            });
     }
 
     // Function to create and display a row in the sales history table
     function createSalesRow(saleData, docId) {
-        const newRow = salesTableBody.insertRow(0); // Insert at the top
+        var newRow = salesTableBody.insertRow(0); // Insert at the top
         newRow.dataset.id = docId; // Store Firestore document ID if needed later
 
-        const cellDate = newRow.insertCell();
-        const cellBrand = newRow.insertCell();
-        const cellSize = newRow.insertCell();
-        const cellQuantity = newRow.insertCell();
-        const cellPrice = newRow.insertCell();
-        const cellTotal = newRow.insertCell();
+        var cellDate = newRow.insertCell();
+        var cellBrand = newRow.insertCell();
+        var cellSize = newRow.insertCell();
+        var cellQuantity = newRow.insertCell();
+        var cellPrice = newRow.insertCell();
+        var cellTotal = newRow.insertCell();
 
         // Format date (consider using a library for more robust formatting)
-        const saleDate = saleData.saleTimestamp.toDate(); // Convert Firestore Timestamp to JS Date
+        var saleDate = saleData.saleTimestamp.toDate(); // Convert Firestore Timestamp to JS Date
         cellDate.textContent = saleDate.toLocaleDateString() + ' ' + saleDate.toLocaleTimeString();
 
         cellBrand.textContent = saleData.brandName;
@@ -127,24 +131,24 @@ document.addEventListener('DOMContentLoaded', function() {
         cellTotal.textContent = (saleData.quantityCrates * saleData.sellingPricePerCrate).toFixed(2);
     }
 
-    // Function to load sales history from Firestore
-    async function loadSalesHistory() {
-        try {
-            // Order by timestamp descending to show newest first
-            const snapshot = await db.collection("sales").orderBy("saleTimestamp", "desc").get();
-            salesTableBody.innerHTML = ''; // Clear existing table rows
-            snapshot.forEach((doc) => {
-                createSalesRow(doc.data(), doc.id);
+    // Function to load sales history from Firestore (ES5 Promise)
+    function loadSalesHistory() {
+        db.collection("sales").orderBy("saleTimestamp", "desc").get()
+            .then(function(snapshot) {
+                salesTableBody.innerHTML = ''; // Clear existing table rows
+                snapshot.forEach(function(doc) {
+                    createSalesRow(doc.data(), doc.id);
+                });
+            })
+            .catch(function(error) {
+                console.error("Error loading sales history: ", error);
+                alert("Failed to load sales history.");
             });
-        } catch (error) {
-            console.error("Error loading sales history: ", error);
-            alert("Failed to load sales history.");
-        }
     }
 
     // Event listener for brand dropdown change
     brandDropdown.addEventListener('change', function() {
-        const selectedBrand = this.value;
+        var selectedBrand = this.value;
         populateSizes(selectedBrand);
     });
 
@@ -154,14 +158,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load sales history when the page loads
     loadSalesHistory(); // <-- Add this call
 
-    // Handle form submission (updated with inventory check)
-    salesForm.addEventListener('submit', async function(event) { // Make async
+    // Handle form submission (updated with inventory check - ES5 Promise)
+    salesForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        const selectedBrand = brandDropdown.value;
-        const selectedSize = sizeDropdown.value;
-        const quantitySold = parseInt(quantityInput.value);
-        const sellingPrice = parseFloat(priceInput.value);
+        var selectedBrand = brandDropdown.value;
+        var selectedSize = sizeDropdown.value;
+        var quantitySold = parseInt(quantityInput.value);
+        var sellingPrice = parseFloat(priceInput.value);
 
         // Validation (as before)
         if (!selectedBrand || !selectedSize || isNaN(quantitySold) || quantitySold <= 0 || isNaN(sellingPrice) || sellingPrice < 0) {
@@ -169,89 +173,85 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // --- Inventory Check and Update Logic --- 
-        try {
-            // Find the specific inventory item document
-            // NOTE: This assumes a unique document per brand/size combination.
-            // If multiple docs can exist, this query needs refinement (e.g., get the first one).
-            const inventoryQuery = db.collection("inventory")
-                                     .where("brandName", "==", selectedBrand)
-                                     .where("bottleSize", "==", selectedSize)
-                                     .limit(1); // Expect only one matching item
+        // --- Inventory Check and Update Logic (ES5 Promise) --- 
+        var inventoryQuery = db.collection("inventory")
+                             .where("brandName", "==", selectedBrand)
+                             .where("bottleSize", "==", selectedSize)
+                             .limit(1);
 
-            const inventorySnapshot = await inventoryQuery.get();
-
-            if (inventorySnapshot.empty) {
-                alert(`Error: Inventory item not found for ${selectedBrand} - ${selectedSize}. Cannot record sale.`);
-                return;
-            }
-
-            const inventoryDocRef = inventorySnapshot.docs[0].ref; // Get the DocumentReference
-            const inventoryDocId = inventorySnapshot.docs[0].id;
-            let saleDocId = null; // To store the ID of the recorded sale
-
-            // Run a transaction to update inventory and record sale atomically
-            await db.runTransaction(async (transaction) => {
-                const inventoryDoc = await transaction.get(inventoryDocRef);
-                if (!inventoryDoc.exists) {
-                    throw new Error(`Inventory item ${inventoryDocId} vanished!`); // Should not happen if query worked
+        inventoryQuery.get()
+            .then(function(inventorySnapshot) {
+                if (inventorySnapshot.empty) {
+                    throw new Error('Inventory item not found for ' + selectedBrand + ' - ' + selectedSize + '. Cannot record sale.');
                 }
 
-                const currentQuantity = inventoryDoc.data().quantityCrates;
-                if (currentQuantity < quantitySold) {
-                    throw new Error(`Insufficient stock for ${selectedBrand} - ${selectedSize}. Available: ${currentQuantity}, Requested: ${quantitySold}`);
-                }
+                var inventoryDocRef = inventorySnapshot.docs[0].ref;
+                var inventoryDocId = inventorySnapshot.docs[0].id;
+                var saleDocId = null; // To store the ID of the recorded sale
 
-                // Calculate the new quantity
-                const newQuantity = currentQuantity - quantitySold;
+                // Run a transaction (still uses async callback internally, but the outer structure is Promise-based)
+                return db.runTransaction(function(transaction) {
+                    // This function must return a Promise
+                    return transaction.get(inventoryDocRef).then(function(inventoryDoc) {
+                        if (!inventoryDoc.exists) {
+                            throw new Error('Inventory item ' + inventoryDocId + ' vanished!');
+                        }
 
-                // Update the inventory document within the transaction
-                transaction.update(inventoryDocRef, { quantityCrates: newQuantity });
+                        var currentQuantity = inventoryDoc.data().quantityCrates;
+                        if (currentQuantity < quantitySold) {
+                            throw new Error('Insufficient stock for ' + selectedBrand + ' - ' + selectedSize + '. Available: ' + currentQuantity + ', Requested: ' + quantitySold);
+                        }
 
-                // Prepare sale data (timestamp will be set by server)
-                const saleData = {
-                    brandName: selectedBrand,
-                    bottleSize: selectedSize,
-                    quantityCrates: quantitySold,
-                    sellingPricePerCrate: sellingPrice,
-                    saleTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    inventoryDocId: inventoryDocId // Optional: Link sale to the inventory item updated
-                };
+                        var newQuantity = currentQuantity - quantitySold;
+                        transaction.update(inventoryDocRef, { quantityCrates: newQuantity });
 
-                // Create the sale document within the transaction
-                // We need a reference first to potentially get the ID later if needed immediately,
-                // though we fetch it properly after the transaction.
-                const saleDocRef = db.collection("sales").doc(); // Auto-generate ID
-                transaction.set(saleDocRef, saleData);
-                saleDocId = saleDocRef.id; // Store the generated ID
-            });
+                        var saleData = {
+                            brandName: selectedBrand,
+                            bottleSize: selectedSize,
+                            quantityCrates: quantitySold,
+                            sellingPricePerCrate: sellingPrice,
+                            saleTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                            inventoryDocId: inventoryDocId
+                        };
 
-            console.log("Transaction successful! Inventory updated and sale recorded.");
+                        var saleDocRef = db.collection("sales").doc(); // Auto-generate ID
+                        transaction.set(saleDocRef, saleData);
+                        saleDocId = saleDocRef.id; // Store the generated ID
+                        return saleDocId; // Return the saleDocId from the transaction promise chain
+                    });
+                });
+            })
+            .then(function(returnedSaleDocId) {
+                // This .then executes after the transaction successfully commits
+                console.log("Transaction successful! Inventory updated and sale recorded.");
+                var saleDocId = returnedSaleDocId; // Get the ID returned by the transaction
 
-            // --- Post-Transaction UI Updates --- 
-            if (saleDocId) {
-                 // Fetch the newly created sale document to get server-generated timestamp
-                const newSaleDoc = await db.collection("sales").doc(saleDocId).get();
-                if (newSaleDoc.exists) {
-                    createSalesRow(newSaleDoc.data(), newSaleDoc.id);
+                // --- Post-Transaction UI Updates --- 
+                if (saleDocId) {
+                    // Fetch the newly created sale document to get server-generated timestamp
+                    return db.collection("sales").doc(saleDocId).get()
+                        .then(function(newSaleDoc) {
+                            if (newSaleDoc.exists) {
+                                createSalesRow(newSaleDoc.data(), newSaleDoc.id);
+                            } else {
+                                console.error("Failed to fetch newly added sale document for table update.");
+                                loadSalesHistory(); // Fallback: Reload the whole table
+                            }
+                            // Clear the form regardless of fetch success
+                            salesForm.reset();
+                            clearOptions(sizeDropdown);
+                            sizeDropdown.disabled = true;
+                            sizeDropdown.options[0].textContent = 'Select brand first...';
+                        });
                 } else {
-                    console.error("Failed to fetch newly added sale document for table update.");
-                    // Fallback: Reload the whole table
-                    loadSalesHistory(); 
+                     console.error("Sale Doc ID was not set after transaction."); // Should not happen on success
+                     return Promise.resolve(); // Continue promise chain
                 }
-
-                // Clear the form
-                salesForm.reset();
-                clearOptions(sizeDropdown);
-                sizeDropdown.disabled = true;
-                sizeDropdown.options[0].textContent = 'Select brand first...';
-            } else {
-                 console.error("Sale Doc ID was not set after transaction."); // Should not happen on success
-            }
-
-        } catch (error) {
-            console.error("Sale transaction failed: ", error);
-            alert(`Failed to record sale: ${error.message}`); // Show specific error (e.g., insufficient stock)
-        }
+            })
+            .catch(function(error) {
+                // This catches errors from inventoryQuery.get() OR db.runTransaction()
+                console.error("Sale transaction failed: ", error);
+                alert('Failed to record sale: ' + error.message); // Show specific error
+            });
     });
 });

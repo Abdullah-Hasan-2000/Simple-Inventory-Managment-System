@@ -3,35 +3,44 @@ var inventoryTableBody = document.getElementById('inventoryTableBody');
 
 // --- Firestore Integration ---
 
-// Function to add a brand to the 'brands' collection if it doesn't exist
-async function addBrandIfNotExists(brandName) {
-    const brandRef = db.collection('brands').doc(brandName.trim().toUpperCase()); // Use uppercase name as ID for uniqueness check
-    try {
-        const doc = await brandRef.get();
-        if (!doc.exists) {
-            await brandRef.set({ name: brandName.trim() }); // Store the original casing
-            console.log(`Brand "${brandName.trim()}" added to brands collection.`);
-        } else {
-            console.log(`Brand "${brandName.trim()}" already exists.`);
-        }
-    } catch (error) {
-        console.error("Error checking/adding brand: ", error);
-        // Decide if you want to proceed with adding the inventory item even if brand check fails
-    }
+// Function to add a brand to the 'brands' collection if it doesn't exist (ES5 Promise)
+function addBrandIfNotExists(brandName) {
+    var brandRef = db.collection('brands').doc(brandName.trim().toUpperCase());
+    return brandRef.get()
+        .then(function(doc) {
+            if (!doc.exists) {
+                return brandRef.set({ name: brandName.trim() })
+                    .then(function() {
+                        console.log('Brand "' + brandName.trim() + '" added to brands collection.');
+                    });
+            } else {
+                console.log('Brand "' + brandName.trim() + '" already exists.');
+                return Promise.resolve(); // Resolve immediately if brand exists
+            }
+        })
+        .catch(function(error) {
+            console.error("Error checking/adding brand: ", error);
+            // Decide if you want to proceed with adding the inventory item even if brand check fails
+            // return Promise.reject(error); // Optionally propagate the error
+        });
 }
 
-// Function to add item to Firestore
-async function addItemToFirestore(itemData) {
-    try {
-        const docRef = await db.collection("inventory").add(itemData);
-        console.log("Document written with ID: ", docRef.id);
-        await addBrandIfNotExists(itemData.brandName); // Add brand after item is successfully added
-        return docRef.id; // Return the new document ID
-    } catch (error) {
-        console.error("Error adding document: ", error);
-        alert("Failed to add item to database. Please try again.");
-        return null;
-    }
+// Function to add item to Firestore (ES5 Promise)
+function addItemToFirestore(itemData) {
+    return db.collection("inventory").add(itemData)
+        .then(function(docRef) {
+            console.log("Document written with ID: ", docRef.id);
+            // Chain the addBrandIfNotExists call
+            return addBrandIfNotExists(itemData.brandName)
+                .then(function() {
+                    return docRef.id; // Return the new document ID after brand check/add
+                });
+        })
+        .catch(function(error) {
+            console.error("Error adding document: ", error);
+            alert("Failed to add item to database. Please try again.");
+            return null; // Return null on failure
+        });
 }
 
 // Function to create and display a row in the inventory table
@@ -77,15 +86,14 @@ function createInventoryRow(itemData, docId) {
     cellTotalPrice.textContent = totalPrice.toFixed(2); // Use calculated value
 
     // Add action buttons with onclick handlers
-    cellActions.innerHTML = `
-        <button class="btn btn-sm btn-warning me-2" onclick="editItem(this)">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteItem(this)">Delete</button>
-    `;
+    cellActions.innerHTML =
+        '<button class="btn btn-sm btn-warning me-2" onclick="editItem(this)">Edit</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="deleteItem(this)">Delete</button>';
 }
 
-// Modified addItem function
-async function addItem() { // Make the function async
-    // Get form values
+// Modified addItem function (ES5 Promise - Corrected)
+function addItem() {
+    // Get form values (Corrected variable declarations)
     var brandNameInput = document.getElementById('brandName');
     var bottleSizeInput = document.getElementById('bottleSize');
     var quantityCratesInput = document.getElementById('quantityCrates');
@@ -96,46 +104,49 @@ async function addItem() { // Make the function async
     var quantityCrates = parseInt(quantityCratesInput.value);
     var pricePerCrate = parseFloat(pricePerCrateInput.value);
 
-    // Basic validation
+    // Basic validation (Corrected)
     if (!brandName || !bottleSize || isNaN(quantityCrates) || quantityCrates < 0 || isNaN(pricePerCrate) || pricePerCrate < 0) {
         alert('Please fill in all fields correctly.');
         return;
     }
 
-    const itemData = {
+    // Corrected itemData object
+    var itemData = {
         brandName: brandName,
         bottleSize: bottleSize,
         quantityCrates: quantityCrates,
-        pricePerCrate: pricePerCrate,
+        pricePerCrate: pricePerCrate
         // Add a timestamp if needed
         // createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    // Add item to Firestore
-    const newDocId = await addItemToFirestore(itemData);
-
-    if (newDocId) {
-        // Add row to the table only if Firestore add was successful
-        createInventoryRow(itemData, newDocId);
-
-        // Clear the form
-        addItemForm.reset();
-    }
+    // Add item to Firestore using Promises
+    addItemToFirestore(itemData)
+        .then(function(newDocId) {
+            if (newDocId) {
+                // Add row to the table only if Firestore add was successful
+                createInventoryRow(itemData, newDocId);
+                // Clear the form
+                addItemForm.reset();
+            }
+        });
+        // No catch here, error is handled in addItemToFirestore
 }
 
-// Function to load inventory from Firestore on page load
-async function loadInventory() {
-    try {
-        const snapshot = await db.collection("inventory").orderBy("brandName").get(); // Example: order by brand name
-        inventoryTableBody.innerHTML = ''; // Clear existing table rows before loading
-        snapshot.forEach((doc) => {
-            console.log(doc.id, " => ", doc.data());
-            createInventoryRow(doc.data(), doc.id);
+// Function to load inventory from Firestore on page load (ES5 Promise - Corrected)
+function loadInventory() {
+    db.collection("inventory").orderBy("brandName").get()
+        .then(function(snapshot) {
+            inventoryTableBody.innerHTML = ''; // Clear existing table rows before loading
+            snapshot.forEach(function(doc) {
+                console.log(doc.id, " => ", doc.data());
+                createInventoryRow(doc.data(), doc.id);
+            });
+        })
+        .catch(function(error) {
+            console.error("Error loading inventory: ", error);
+            alert("Failed to load inventory data.");
         });
-    } catch (error) {
-        console.error("Error loading inventory: ", error);
-        alert("Failed to load inventory data.");
-    }
 }
 
 // --- End Firestore Integration ---
@@ -181,6 +192,7 @@ function editItem(button) {
 function createSizeDropdown(selectedValue) {
     var options = ['250ml', '300ml', '345ml', '500ml', '1L', '1.5L', '2.25L'];
     var selectHTML = '<select class="form-select form-select-sm">';
+    // Replace arrow function with function keyword
     options.forEach(function(option) {
         selectHTML += '<option value="' + option + '"' + (option === selectedValue ? ' selected' : '') + '>' + option + '</option>';
     });
@@ -188,14 +200,13 @@ function createSizeDropdown(selectedValue) {
     return selectHTML;
 }
 
-// Function to save the edited row (UPDATED with Firestore)
-async function saveItem(button) { // Make async
+// Function to save the edited row (UPDATED with Firestore - ES5 Promise)
+function saveItem(button) {
     var row = button.parentNode.parentNode; // Get the <tr> element
     var docId = row.dataset.id; // Get Firestore document ID
     if (!docId) {
         console.error("Document ID not found on row.");
         alert("Error saving item: Could not find item ID.");
-        // Optionally revert UI changes here
         return;
     }
 
@@ -216,7 +227,7 @@ async function saveItem(button) { // Make async
         return;
     }
 
-    const updatedData = {
+    var updatedData = {
         brandName: newBrandName,
         bottleSize: newBottleSize,
         quantityCrates: newQuantityCrates,
@@ -225,60 +236,61 @@ async function saveItem(button) { // Make async
         // updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    try {
-        // Update Firestore document
-        await db.collection("inventory").doc(docId).update(updatedData);
-        console.log("Document successfully updated!");
+    // Update Firestore document using Promises
+    db.collection("inventory").doc(docId).update(updatedData)
+        .then(function() {
+            console.log("Document successfully updated!");
+            // Chain the brand check
+            return addBrandIfNotExists(newBrandName);
+        })
+        .then(function() {
+            // --- Recalculate derived values for display --- 
+            var bottlesPerCrate;
+            if (newBottleSize === '2.25L') {
+                bottlesPerCrate = 4;
+            } else if (newBottleSize === '1.5L' || newBottleSize === '1L') {
+                bottlesPerCrate = 6;
+            } else if (newBottleSize === '500ml' || newBottleSize === '345ml' || newBottleSize === '300ml' || newBottleSize === '250ml') {
+                bottlesPerCrate = 12;
+            } else {
+                bottlesPerCrate = 0;
+            }
+            var newQuantityBottles = newQuantityCrates * bottlesPerCrate;
+            var newPricePerBottle = bottlesPerCrate > 0 ? (newPricePerCrate / bottlesPerCrate) : 0;
+            var newTotalPrice = newPricePerCrate * newQuantityCrates;
+            // --- End Recalculation ---
 
-        // Check and add brand if it's new or changed
-        await addBrandIfNotExists(newBrandName);
+            // Update cell content with new static values
+            cells[0].textContent = newBrandName;
+            cells[1].textContent = newBottleSize;
+            cells[2].textContent = newQuantityCrates;
+            cells[3].textContent = newQuantityBottles;
+            cells[4].textContent = newPricePerCrate.toFixed(2);
+            cells[5].textContent = newPricePerBottle.toFixed(2);
+            cells[6].textContent = newTotalPrice.toFixed(2);
 
-        // --- Recalculate derived values for display --- 
-        var bottlesPerCrate;
-        if (newBottleSize === '2.25L') {
-            bottlesPerCrate = 4;
-        } else if (newBottleSize === '1.5L' || newBottleSize === '1L') {
-            bottlesPerCrate = 6;
-        } else if (newBottleSize === '500ml' || newBottleSize === '345ml' || newBottleSize === '300ml' || newBottleSize === '250ml') {
-            bottlesPerCrate = 12;
-        } else {
-            bottlesPerCrate = 0;
-        }
-        var newQuantityBottles = newQuantityCrates * bottlesPerCrate;
-        var newPricePerBottle = bottlesPerCrate > 0 ? (newPricePerCrate / bottlesPerCrate) : 0;
-        var newTotalPrice = newPricePerCrate * newQuantityCrates;
-        // --- End Recalculation ---
+            // Change Save button back to Edit button
+            button.textContent = 'Edit';
+            button.classList.remove('btn-success');
+            button.classList.add('btn-warning');
+            button.setAttribute('onclick', 'editItem(this)');
 
-        // Update cell content with new static values
-        cells[0].textContent = newBrandName;
-        cells[1].textContent = newBottleSize;
-        cells[2].textContent = newQuantityCrates;
-        cells[3].textContent = newQuantityBottles;
-        cells[4].textContent = newPricePerCrate.toFixed(2);
-        cells[5].textContent = newPricePerBottle.toFixed(2);
-        cells[6].textContent = newTotalPrice.toFixed(2);
+            // Restore Delete button
+            var deleteButton = row.querySelector('.btn-danger');
+            if (deleteButton) {
+                deleteButton.style.display = 'inline-block'; // Or 'block' depending on original display
+            }
 
-        // Change Save button back to Edit button
-        button.textContent = 'Edit';
-        button.classList.remove('btn-success');
-        button.classList.add('btn-warning');
-        button.setAttribute('onclick', 'editItem(this)');
-
-        // Restore Delete button
-        var deleteButton = row.querySelector('.btn-danger');
-        if (deleteButton) {
-            deleteButton.style.display = 'inline-block'; // Or 'block' depending on original display
-        }
-
-    } catch (error) {
-        console.error("Error updating document: ", error);
-        alert("Failed to save changes to the database. Please try again.");
-        // Optionally revert UI changes here
-    }
+        })
+        .catch(function(error) {
+            console.error("Error updating document: ", error);
+            alert("Failed to save changes to the database. Please try again.");
+            // Optionally revert UI changes here
+        });
 }
 
-// Function to delete a table row (UPDATED with Firestore)
-async function deleteItem(button) { // Make async
+// Function to delete a table row (UPDATED with Firestore - ES5 Promise)
+function deleteItem(button) {
     var row = button.parentNode.parentNode; // Get the <tr> element
     var docId = row.dataset.id; // Get Firestore document ID
 
@@ -293,21 +305,22 @@ async function deleteItem(button) { // Make async
         return;
     }
 
-    try {
-        // Delete the document from Firestore
-        await db.collection("inventory").doc(docId).delete();
-        console.log("Document successfully deleted!");
+    // Delete the document from Firestore using Promises
+    db.collection("inventory").doc(docId).delete()
+        .then(function() {
+            console.log("Document successfully deleted!");
 
-        // Remove the row from the table body *after* successful deletion
-        inventoryTableBody.removeChild(row);
+            // Remove the row from the table body *after* successful deletion
+            inventoryTableBody.removeChild(row);
 
-        // Note: We are not deleting the brand from the 'brands' collection here,
-        // as other inventory items might still use it.
+            // Note: We are not deleting the brand from the 'brands' collection here,
+            // as other inventory items might still use it.
 
-    } catch (error) {
-        console.error("Error removing document: ", error);
-        alert("Failed to delete item from the database. Please try again.");
-    }
+        })
+        .catch(function(error) {
+            console.error("Error removing document: ", error);
+            alert("Failed to delete item from the database. Please try again.");
+        });
 }
 
 // Load inventory when the DOM is ready
