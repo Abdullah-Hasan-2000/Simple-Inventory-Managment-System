@@ -38,42 +38,42 @@
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container mt-4"> <!-- Changed from container -->
         <h1 class="mb-4">Inventory Dashboard</h1>
-        <div class="row">
-            
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-header">Total Products</div>
-                    <div class="card-body">
-                        <h5 class="card-title">1500</h5> 
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="card text-center text-bg-warning">
-                    <div class="card-header">Low Stock</div>
-                    <div class="card-body">
-                        <h5 class="card-title">50</h5> 
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="card text-center text-bg-danger">
-                    <div class="card-header">Out of Stock</div>
-                    <div class="card-body">
-                        <h5 class="card-title">15</h5> 
-                    </div>
-                </div>
-            </div>
+
+        <!-- Inventory Summary Section -->
+        <div class="row mb-4" id="inventorySummary">
+            <!-- Cards for Total Brands, Low Stock Count, Out of Stock Count will be added here -->
         </div>
+
+        <!-- Detailed Inventory Section -->
+        <h2 class="mb-3">Inventory Details</h2>
+        <div id="inventoryDetails" class="accordion">
+            <!-- Accordion items for each brand will be added here by JS -->
+        </div>
+
+        <hr class="my-5">
+
+        <!-- Low Stock Section -->
+        <h2 class="mb-3">Low Stock Items (&lt; 5 Crates)</h2>
+        <div id="lowStockList" class="list-group">
+            <!-- Low stock items will be listed here by JS -->
+        </div>
+
+         <hr class="my-5">
+
+        <!-- Out of Stock Section -->
+        <h2 class="mb-3">Out of Stock Items</h2>
+        <div id="outOfStockList" class="list-group">
+            <!-- Out of stock items will be listed here by JS -->
+        </div>
+
     </div>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script> <!-- Added Firestore SDK -->
 
     <script>
       // IMPORTANT: Replace with your web app's Firebase configuration!
@@ -91,11 +91,15 @@
       } else {
          firebase.app(); // if already initialized, use that one
       }
+      const db = firebase.firestore(); // Initialize Firestore
     </script>
 
     <!-- Auth Check Script RE-ENABLED -->
     <script src="../check-auth.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- Dashboard Script -->
+    <script src="dashboard.js"></script>
 </body>
 </html>
