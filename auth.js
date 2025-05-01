@@ -68,7 +68,7 @@ firebase.auth().onAuthStateChanged(function(user) {
     } else {
         // User is signed out.
         console.log('Auth state changed: Logged out');
-        authStatusDiv.textContent = 'Please log in or sign up.';
+        authStatusDiv.textContent = 'Please log in';
         logoutButton.style.display = 'none'; // Hide logout button
          // Show login/signup buttons if they were hidden
         // document.querySelector('button[onclick="signUp()"]').style.display = 'inline-block';
