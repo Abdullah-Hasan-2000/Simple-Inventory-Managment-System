@@ -24,7 +24,7 @@
                     <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="#">Add/Delete Item</a>
                     </li>
-                    <li class="nav-item"> <!-- Added Sales Link -->
+                    <li class="nav-item">
                         <a class="nav-link" href="../sales/sales.html">Sales</a>
                     </li>
                 </ul>
@@ -71,7 +71,7 @@
                             <input type="number" class="form-control" id="pricePerCrate" min="0" step="0.01" required>
                         </div>
                         <div class="col-12">
-                            <button type="button" class="btn btn-primary" onclick="addItem()">Add Item</button> <!-- Changed type and added onclick -->
+                            <button type="button" class="btn btn-primary" onclick="addItem ()">Add Item</button>
                         </div>
                     </div>
                 </form>
@@ -95,37 +95,17 @@
                 </tr>
             </thead>
             <tbody id="inventoryTableBody">
-                <!-- Inventory items will be added here dynamically -->
+                
             </tbody>
         </table>
 
     </div>
 
-    <!-- Firebase SDKs -->
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script> <!-- Added Firestore SDK -->
-
-    <script>
-      // IMPORTANT: Replace with your web app's Firebase configuration!
-      var firebaseConfig = {
-            apiKey: "AIzaSyCakMhSTPskw-Qy2P5RJFlvf71sxfNJwfs",
-            authDomain: "new-project-46484.firebaseapp.com",
-            projectId: "new-project-46484",
-            storageBucket: "new-project-46484.firebasestorage.app",
-            messagingSenderId: "37040453346",
-            appId: "1:37040453346:web:e9fae426e55112890d50bb"
-        };
-      // Initialize Firebase
-      if (!firebase.apps.length) { // Prevent re-initialization
-         firebase.initializeApp(firebaseConfig);
-      } else {
-         firebase.app(); // if already initialized, use that one
-      }
-      const db = firebase.firestore(); // Initialize Firestore
-    </script>
-
-    <!-- Auth Check Script RE-ENABLED -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <script src="../check-auth.js"></script>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

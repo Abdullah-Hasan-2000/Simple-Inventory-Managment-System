@@ -1,3 +1,19 @@
+var firebaseConfig = {
+            apiKey: "AIzaSyCakMhSTPskw-Qy2P5RJFlvf71sxfNJwfs",
+            authDomain: "new-project-46484.firebaseapp.com",
+            projectId: "new-project-46484",
+            storageBucket: "new-project-46484.firebasestorage.app",
+            messagingSenderId: "37040453346",
+            appId: "1:37040453346:web:e9fae426e55112890d50bb"
+        };
+      
+      if (!firebase.apps.length) {
+         firebase.initializeApp(firebaseConfig);
+      } else {
+         firebase.app();
+      }
+      var db = firebase.firestore();
+
 document.addEventListener('DOMContentLoaded', function() {
     var inventorySummaryDiv = document.getElementById('inventorySummary');
     var inventoryDetailsDiv = document.getElementById('inventoryDetails');
@@ -112,13 +128,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     var data = doc.data();
                     data.id = doc.id;
                     inventoryItems.push(data);
+                    console.log(inventoryItems);
+                    
                 });
 
                 // Process data
                 var groupedInventory = {};
                 var lowStockItems = [];
                 var outOfStockItems = [];
-                var brands = []; // Use array instead of Set
+                var brands = [];
 
                 inventoryItems.forEach(function(item) {
                     // Add brand if not already present
