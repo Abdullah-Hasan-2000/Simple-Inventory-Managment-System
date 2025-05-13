@@ -24,13 +24,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to create a summary card
     function createSummaryCard(title, value, bgColorClass, textColorClass) {
-        // ES5 default parameter handling
+        
         bgColorClass = typeof bgColorClass !== 'undefined' ? bgColorClass : 'bg-light';
         textColorClass = typeof textColorClass !== 'undefined' ? textColorClass : 'text-dark';
 
         var col = document.createElement('div');
-        col.className = 'col-md-4 mb-3'; // Added mb-3 for spacing
-        // Replace template literal with string concatenation
+        col.className = 'col-md-4 mb-3'; 
+       
         col.innerHTML =
             '<div class="card text-center ' + bgColorClass + ' ' + textColorClass + '">' +
                 '<div class="card-header">' + title + '</div>' +
@@ -51,13 +51,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to render the detailed inventory accordion
     function renderInventoryDetails(groupedInventory) {
-        inventoryDetailsDiv.innerHTML = ''; // Clear previous details
-        var isFirst = true; // To make the first accordion item open by default
+        inventoryDetailsDiv.innerHTML = ''; 
+        var isFirst = true; // To make the first item open by default
 
         // Sort brand names alphabetically
         var sortedBrands = Object.keys(groupedInventory).sort();
 
-        // Replace arrow function with function keyword
+        
         sortedBrands.forEach(function(brandName) {
             var items = groupedInventory[brandName];
             var accordionItemId = 'collapse-' + brandName.replace(/\s+/g, '-');
@@ -68,13 +68,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var totalBrandQuantity = 0;
             var listItemsHtml = '<ul class="list-group list-group-flush">';
-            // Sort items by size (optional, requires custom sort logic if sizes aren't easily comparable)
-            // Replace arrow function with function keyword
-            items.sort(function(a, b) { return a.bottleSize.localeCompare(b.bottleSize); }); // Simple string sort
-            // Replace arrow function with function keyword
+            
+            items.sort(function(a, b) { return a.bottleSize.localeCompare(b.bottleSize); }); // 
             items.forEach(function(item) {
                 totalBrandQuantity += item.quantityCrates;
-                // Replace template literal with string concatenation
+                
                 listItemsHtml += '<li class="list-group-item d-flex justify-content-between align-items-center">' +
                                     item.bottleSize +
                                     '<span class="badge bg-primary rounded-pill">' + item.quantityCrates + ' Crates</span>' +
@@ -82,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             listItemsHtml += '</ul>';
 
-            // Replace template literal with string concatenation
+            
             accordionItem.innerHTML =
                 '<h2 class="accordion-header" id="' + headerId + '">' +
                     '<button class="accordion-button ' + (isFirst ? '' : 'collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + accordionItemId + '" aria-expanded="' + isFirst + '" aria-controls="' + accordionItemId + '">' +
@@ -101,17 +99,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to render low/out of stock lists
     function renderStockList(items, listElement) {
-        listElement.innerHTML = ''; // Clear previous list
+        listElement.innerHTML = ''; 
         if (items.length === 0) {
             listElement.innerHTML = '<p class="text-muted">None</p>';
             return;
         }
-        // Replace arrow function with function keyword
+        
         items.forEach(function(item) {
             var listItem = document.createElement('a');
-            listItem.href = '#'; // Or link to add/delete page?
+            listItem.href = '#'; 
             listItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-            // Replace template literal with string concatenation
+            
             listItem.innerHTML =
                 item.brandName + ' - ' + item.bottleSize +
                 '<span class="badge ' + (item.quantityCrates <= 0 ? 'bg-danger' : 'bg-warning text-dark') + ' rounded-pill">Qty: ' + item.quantityCrates + '</span>';
@@ -119,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Main function to load and process data (Converted to ES5 Promise syntax)
+    // Main function to load and process data
     function loadDashboardData() {
         db.collection("inventory").orderBy("brandName").get()
             .then(function(snapshot) {
@@ -132,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                 });
 
-                // Process data
+               
                 var groupedInventory = {};
                 var lowStockItems = [];
                 var outOfStockItems = [];
@@ -158,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
-                // Render sections
+                
                 renderSummaryCards(brands.length, lowStockItems.length, outOfStockItems.length);
                 renderInventoryDetails(groupedInventory);
                 renderStockList(lowStockItems, lowStockListDiv);
@@ -174,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Initial load
+    
     loadDashboardData();
 
 });

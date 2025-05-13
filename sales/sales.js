@@ -6,21 +6,21 @@ document.addEventListener('DOMContentLoaded', function() {
     var salesForm = document.getElementById('salesForm');
     var salesTableBody = document.getElementById('salesTableBody');
 
-    // Helper function to add options to a select element
-    function addOption(selectElement, text, value) {
+    // function to add options to a select element
+    function addOption(selectElement, text) {
         var option = document.createElement('option');
         option.textContent = text;
-        option.value = value;
+        option.value = text;
         selectElement.appendChild(option);
     }
 
-    // Helper function to clear options from a select element
+    // function to clear options from a select element
     function clearOptions(selectElement) {
-        // Keep the first option (placeholder) and remove the rest
+        
         while (selectElement.options.length > 1) {
             selectElement.remove(1);
         }
-        // Reset to the placeholder option being selected
+        
         selectElement.selectedIndex = 0;
     }
 
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     }
 
-    // Function to fetch brands from Firestore and populate the dropdown (ES5 Promise)
+    // Function to fetch brands from Firestore and populate the dropdown
     function populateBrands() {
         db.collection('brands').orderBy('name').get()
             .then(function(snapshot) {
@@ -41,9 +41,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 snapshot.forEach(function(doc) {
-                    // Capitalize the brand name for display and value
+                    
                     var displayName = capitalizeFirstLetter(doc.data().name);
-                    addOption(brandDropdown, displayName, displayName);
+                    addOption(brandDropdown, displayName);
                 });
             })
             .catch(function(error) {
@@ -53,14 +53,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Function to fetch available sizes for a selected brand (ES5 Promise)
+    // Function to fetch available sizes for a selected brand
     function populateSizes(selectedBrand) {
         clearOptions(sizeDropdown);
         sizeDropdown.disabled = true;
         sizeDropdown.options[0].textContent = 'Loading sizes...';
         if (!selectedBrand) {
             sizeDropdown.options[0].textContent = 'Select brand first...';
-            return; // Exit if no brand is selected
+            return;
         }
         // Always use capitalized brand for queries
         var capBrand = capitalizeFirstLetter(selectedBrand);
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .get()
             .then(function(snapshot) {
                 if (snapshot.empty) {
-                    // Try a fallback: ignore case by fetching all and filtering in JS
+                    
                     return db.collection('inventory').get();
                 }
                 return snapshot;
@@ -106,12 +106,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Function to add a sale record to Firestore (ES5 Promise)
+    // Function to add a sale record to Firestore
     function addSaleToFirestore(saleData) {
         return db.collection("sales").add(saleData)
             .then(function(docRef) {
                 console.log("Sale recorded with ID: ", docRef.id);
-                return docRef.id; // Return the new document ID
+                return docRef.id;
             })
             .catch(function(error) {
                 console.error("Error recording sale: ", error);
@@ -122,8 +122,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to create and display a row in the sales history table
     function createSalesRow(saleData, docId) {
-        var newRow = salesTableBody.insertRow(0); // Insert at the top
-        newRow.dataset.id = docId; // Store Firestore document ID if needed later
+        var newRow = salesTableBody.insertRow(0);
+        newRow.dataset.id = docId;
 
         var cellDate = newRow.insertCell();
         var cellBrand = newRow.insertCell();
@@ -132,8 +132,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var cellPrice = newRow.insertCell();
         var cellTotal = newRow.insertCell();
 
-        // Format date (consider using a library for more robust formatting)
-        var saleDate = saleData.saleTimestamp.toDate(); // Convert Firestore Timestamp to JS Date
+        
+        var saleDate = saleData.saleTimestamp.toDate();
         cellDate.textContent = saleDate.toLocaleDateString() + ' ' + saleDate.toLocaleTimeString();
 
         cellBrand.textContent = saleData.brandName;
@@ -143,11 +143,11 @@ document.addEventListener('DOMContentLoaded', function() {
         cellTotal.textContent = (saleData.quantityCrates * saleData.sellingPricePerCrate).toFixed(2);
     }
 
-    // Function to load sales history from Firestore (ES5 Promise)
+    // Function to load sales history from Firestore
     function loadSalesHistory() {
         db.collection("sales").orderBy("saleTimestamp", "desc").get()
             .then(function(snapshot) {
-                salesTableBody.innerHTML = ''; // Clear existing table rows
+                salesTableBody.innerHTML = '';
                 snapshot.forEach(function(doc) {
                     createSalesRow(doc.data(), doc.id);
                 });
@@ -170,22 +170,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load sales history when the page loads
     loadSalesHistory();
 
-    // Handle form submission (updated with inventory check - ES5 Promise)
+    // Handle form submit button click
     salesForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        var selectedBrand = capitalizeFirstLetter(brandDropdown.value); // Always capitalize
+        var selectedBrand = capitalizeFirstLetter(brandDropdown.value);
         var selectedSize = sizeDropdown.value;
         var quantitySold = parseInt(quantityInput.value);
         var sellingPrice = parseFloat(priceInput.value);
 
-        // Validation (as before)
+        
         if (!selectedBrand || !selectedSize || isNaN(quantitySold) || quantitySold <= 0 || isNaN(sellingPrice) || sellingPrice < 0) {
             alert('Please fill in all fields correctly (Quantity > 0, Price >= 0).');
             return;
         }
 
-        // --- Inventory Check and Update Logic (ES5 Promise) --- 
+        
         // Try all case variations for brandName to match inventory
         function getInventoryDoc() {
             return db.collection("inventory")
@@ -219,10 +219,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 var inventoryDocRef = inventorySnapshot.docs[0].ref;
                 var inventoryDocId = inventorySnapshot.docs[0].id;
-                var saleDocId = null; // To store the ID of the recorded sale
-                // Run a transaction (still uses async callback internally, but the outer structure is Promise-based)
+                var saleDocId = null; 
                 return db.runTransaction(function(transaction) {
-                    // This function must return a Promise
+                    
                     return transaction.get(inventoryDocRef).then(function(inventoryDoc) {
                         if (!inventoryDoc.exists) {
                             throw new Error('Inventory item ' + inventoryDocId + ' vanished!');
@@ -241,44 +240,44 @@ document.addEventListener('DOMContentLoaded', function() {
                             saleTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
                             inventoryDocId: inventoryDocId
                         };
-                        var saleDocRef = db.collection("sales").doc(); // Auto-generate ID
+                        var saleDocRef = db.collection("sales").doc();
                         transaction.set(saleDocRef, saleData);
-                        saleDocId = saleDocRef.id; // Store the generated ID
-                        return saleDocId; // Return the saleDocId from the transaction promise chain
+                        saleDocId = saleDocRef.id; 
+                        return saleDocId;
                     });
                 });
             })
             .then(function(returnedSaleDocId) {
                 // This .then executes after the transaction successfully commits
                 console.log("Transaction successful! Inventory updated and sale recorded.");
-                var saleDocId = returnedSaleDocId; // Get the ID returned by the transaction
+                var saleDocId = returnedSaleDocId; 
 
-                // --- Post-Transaction UI Updates --- 
+                
                 if (saleDocId) {
-                    // Fetch the newly created sale document to get server-generated timestamp
+                   
                     return db.collection("sales").doc(saleDocId).get()
                         .then(function(newSaleDoc) {
                             if (newSaleDoc.exists) {
                                 createSalesRow(newSaleDoc.data(), newSaleDoc.id);
                             } else {
                                 console.error("Failed to fetch newly added sale document for table update.");
-                                loadSalesHistory(); // Fallback: Reload the whole table
+                                loadSalesHistory();
                             }
-                            // Clear the form regardless of fetch success
+                            
                             salesForm.reset();
                             clearOptions(sizeDropdown);
                             sizeDropdown.disabled = true;
                             sizeDropdown.options[0].textContent = 'Select brand first...';
                         });
                 } else {
-                     console.error("Sale Doc ID was not set after transaction."); // Should not happen on success
-                     return Promise.resolve(); // Continue promise chain
+                     console.error("Sale Doc ID was not set after transaction."); 
+                     return Promise.resolve(); 
                 }
             })
             .catch(function(error) {
-                // This catches errors from inventoryQuery.get() OR db.runTransaction()
+                
                 console.error("Sale transaction failed: ", error);
-                alert('Failed to record sale: ' + error.message); // Show specific error
+                alert('Failed to record sale: ' + error.message);
             });
     });
 });
