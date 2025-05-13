@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     var brandDropdown = document.getElementById('brandNameDropdown');
     var sizeDropdown = document.getElementById('sizeDropdown');
-    var quantityInput = document.getElementById('quantityCrates'); // Get quantity input
-    var priceInput = document.getElementById('sellingPricePerCrate'); // Get price input
+    var quantityInput = document.getElementById('quantityCrates'); 
+    var priceInput = document.getElementById('sellingPricePerCrate'); 
     var salesForm = document.getElementById('salesForm');
-    var salesTableBody = document.getElementById('salesTableBody'); // Get table body
+    var salesTableBody = document.getElementById('salesTableBody');
 
     // Helper function to add options to a select element
     function addOption(selectElement, text, value) {
@@ -24,6 +24,12 @@ document.addEventListener('DOMContentLoaded', function() {
         selectElement.selectedIndex = 0;
     }
 
+    // Function to capitalize the first letter of a string
+    function capitalizeFirstLetter(str) {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+
     // Function to fetch brands from Firestore and populate the dropdown (ES5 Promise)
     function populateBrands() {
         db.collection('brands').orderBy('name').get()
@@ -35,7 +41,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 snapshot.forEach(function(doc) {
-                    addOption(brandDropdown, doc.data().name, doc.data().name);
+                    // Capitalize the brand name for display and value
+                    var displayName = capitalizeFirstLetter(doc.data().name);
+                    addOption(brandDropdown, displayName, displayName);
                 });
             })
             .catch(function(error) {
@@ -50,43 +58,47 @@ document.addEventListener('DOMContentLoaded', function() {
         clearOptions(sizeDropdown);
         sizeDropdown.disabled = true;
         sizeDropdown.options[0].textContent = 'Loading sizes...';
-
         if (!selectedBrand) {
             sizeDropdown.options[0].textContent = 'Select brand first...';
             return; // Exit if no brand is selected
         }
-
+        // Always use capitalized brand for queries
+        var capBrand = capitalizeFirstLetter(selectedBrand);
         db.collection('inventory')
-            .where('brandName', '==', selectedBrand)
+            .where('brandName', 'in', [capBrand, capBrand.toLowerCase(), capBrand.toUpperCase()])
             .get()
             .then(function(snapshot) {
                 if (snapshot.empty) {
-                    console.log('No inventory found for brand: ' + selectedBrand);
+                    // Try a fallback: ignore case by fetching all and filtering in JS
+                    return db.collection('inventory').get();
+                }
+                return snapshot;
+            })
+            .then(function(snapshot) {
+                var availableSizes = [];
+                if (snapshot.empty) {
                     sizeDropdown.options[0].textContent = 'No sizes available';
                     return;
                 }
-
-                var availableSizes = []; // Use an array instead of Set
                 snapshot.forEach(function(doc) {
-                    var size = doc.data().bottleSize;
-                    if (availableSizes.indexOf(size) === -1) { // Check if size already exists
-                        availableSizes.push(size);
+                    var brand = doc.data().brandName;
+                    if (brand && brand.toLowerCase() === capBrand.toLowerCase()) {
+                        var size = doc.data().bottleSize;
+                        if (availableSizes.indexOf(size) === -1) {
+                            availableSizes.push(size);
+                        }
                     }
                 });
-
                 if (availableSizes.length === 0) {
-                     sizeDropdown.options[0].textContent = 'No sizes available';
-                     return;
+                    sizeDropdown.options[0].textContent = 'No sizes available';
+                    return;
                 }
-
                 var sortedSizes = availableSizes.sort();
-
                 sizeDropdown.options[0].textContent = 'Choose...';
                 sortedSizes.forEach(function(size) {
                     addOption(sizeDropdown, size, size);
                 });
                 sizeDropdown.disabled = false;
-
             })
             .catch(function(error) {
                 console.error("Error fetching sizes: ", error);
@@ -156,13 +168,13 @@ document.addEventListener('DOMContentLoaded', function() {
     populateBrands();
 
     // Load sales history when the page loads
-    loadSalesHistory(); // <-- Add this call
+    loadSalesHistory();
 
     // Handle form submission (updated with inventory check - ES5 Promise)
     salesForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        var selectedBrand = brandDropdown.value;
+        var selectedBrand = capitalizeFirstLetter(brandDropdown.value); // Always capitalize
         var selectedSize = sizeDropdown.value;
         var quantitySold = parseInt(quantityInput.value);
         var sellingPrice = parseFloat(priceInput.value);
@@ -174,21 +186,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // --- Inventory Check and Update Logic (ES5 Promise) --- 
-        var inventoryQuery = db.collection("inventory")
-                             .where("brandName", "==", selectedBrand)
-                             .where("bottleSize", "==", selectedSize)
-                             .limit(1);
-
-        inventoryQuery.get()
+        // Try all case variations for brandName to match inventory
+        function getInventoryDoc() {
+            return db.collection("inventory")
+                .where("brandName", "==", selectedBrand)
+                .where("bottleSize", "==", selectedSize)
+                .limit(1)
+                .get()
+                .then(function(snapshot) {
+                    if (!snapshot.empty) return snapshot;
+                    // Try lowercase
+                    return db.collection("inventory")
+                        .where("brandName", "==", selectedBrand.toLowerCase())
+                        .where("bottleSize", "==", selectedSize)
+                        .limit(1)
+                        .get();
+                })
+                .then(function(snapshot) {
+                    if (!snapshot.empty) return snapshot;
+                    // Try uppercase
+                    return db.collection("inventory")
+                        .where("brandName", "==", selectedBrand.toUpperCase())
+                        .where("bottleSize", "==", selectedSize)
+                        .limit(1)
+                        .get();
+                });
+        }
+        getInventoryDoc()
             .then(function(inventorySnapshot) {
                 if (inventorySnapshot.empty) {
                     throw new Error('Inventory item not found for ' + selectedBrand + ' - ' + selectedSize + '. Cannot record sale.');
                 }
-
                 var inventoryDocRef = inventorySnapshot.docs[0].ref;
                 var inventoryDocId = inventorySnapshot.docs[0].id;
                 var saleDocId = null; // To store the ID of the recorded sale
-
                 // Run a transaction (still uses async callback internally, but the outer structure is Promise-based)
                 return db.runTransaction(function(transaction) {
                     // This function must return a Promise
@@ -196,15 +227,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!inventoryDoc.exists) {
                             throw new Error('Inventory item ' + inventoryDocId + ' vanished!');
                         }
-
                         var currentQuantity = inventoryDoc.data().quantityCrates;
                         if (currentQuantity < quantitySold) {
                             throw new Error('Insufficient stock for ' + selectedBrand + ' - ' + selectedSize + '. Available: ' + currentQuantity + ', Requested: ' + quantitySold);
                         }
-
                         var newQuantity = currentQuantity - quantitySold;
                         transaction.update(inventoryDocRef, { quantityCrates: newQuantity });
-
                         var saleData = {
                             brandName: selectedBrand,
                             bottleSize: selectedSize,
@@ -213,7 +241,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             saleTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
                             inventoryDocId: inventoryDocId
                         };
-
                         var saleDocRef = db.collection("sales").doc(); // Auto-generate ID
                         transaction.set(saleDocRef, saleData);
                         saleDocId = saleDocRef.id; // Store the generated ID

@@ -21,16 +21,19 @@ var inventoryTableBody = document.getElementById('inventoryTableBody');
 
 // Function to add a brand to the 'brands' collection if it doesn't exist
 function addBrandIfNotExists(brandName) {
-    var brandRef = db.collection('brands').doc(brandName.trim().toUpperCase());
+    // Capitalize the brand name for storage
+    var formattedName = brandName.trim();
+    var displayName = formattedName.charAt(0).toUpperCase() + formattedName.slice(1).toLowerCase();
+    var brandRef = db.collection('brands').doc(formattedName.toUpperCase());
     return brandRef.get()
         .then(function (doc) {
             if (!doc.exists) {
-                return brandRef.set({ name: brandName.trim() })
+                return brandRef.set({ name: displayName })
                     .then(function () {
-                        console.log('Brand "' + brandName.trim() + '" added to brands collection.');
+                        console.log('Brand "' + displayName + '" added to brands collection.');
                     });
             } else {
-                console.log('Brand "' + brandName.trim() + '" already exists.');
+                console.log('Brand "' + displayName + '" already exists.');
                 return Promise.resolve();
             }
         })
@@ -114,6 +117,8 @@ function addItem() {
     var pricePerCrateInput = document.getElementById('pricePerCrate');
 
     var brandName = brandNameInput.value.trim();
+    // Capitalize first letter for saving to db and table
+    brandName = brandName.charAt(0).toUpperCase() + brandName.slice(1).toLowerCase();
     var bottleSize = bottleSizeInput.value;
     var quantityCrates = parseInt(quantityCratesInput.value);
     var pricePerCrate = parseFloat(pricePerCrateInput.value);
@@ -223,6 +228,8 @@ function saveItem(button) {
 
     // Get new values from inputs/select
     var newBrandName = inputs[0].value.trim();
+    // Capitalize first letter for saving to db and table
+    newBrandName = newBrandName.charAt(0).toUpperCase() + newBrandName.slice(1).toLowerCase();
     var newBottleSize = select.value;
     var newQuantityCrates = parseInt(inputs[1].value);
     var newPricePerCrate = parseFloat(inputs[2].value);
